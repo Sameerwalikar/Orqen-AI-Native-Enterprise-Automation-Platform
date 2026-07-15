@@ -1,0 +1,484 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  firstName String
+  gmail     String   @unique
+  password  String
+  avatarUrl String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organizations OrganizationUser[]
+  agents        Agent[]
+  agentExecutions AgentExecution[]
+  collections   Collection[]
+  workflows     Workflow[]
+  workflowExecutions WorkflowExecution[]
+  pipelines     Pipeline[]
+  pipelineRuns  PipelineRun[]
+  connectors    Connector[]
+  schedules     Schedule[]
+  webhooks      Webhook[]
+  executionMetrics ExecutionMetric[]
+  usageAnalytics UsageAnalytics[]
+
+  @@map("users")
+}
+
+// Organization & Multi-tenancy
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  plan      PlanType @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users  OrganizationUser[]
+  agents Agent[]
+  collections Collection[]
+  connectors Connector[]
+  workflows Workflow[]
+  pipelines Pipeline[]
+  schedules Schedule[]
+  webhooks Webhook[]
+  executionMetrics ExecutionMetric[]
+  usageAnalytics UsageAnalytics[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+model OrganizationUser {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         Int
+  role           OrgRole  @default(MEMBER)
+  createdAt      DateTime @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("organization_users")
+}
+
+enum PlanType {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// Agent System
+model Agent {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?  @db.Text
+  version       String   @default("1.0.0")
+  userId        Int
+  organizationId String?
+  config        Json     // Agent configuration (type, model, prompts, etc.)
+  code          String?  @db.Text // Agent code/logic (optional)
+  status        AgentStatus @default(DRAFT)
+  isPublic      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  executions    AgentExecution[]
+
+  @@unique([name, version, userId])
+  @@index([userId, status])
+  @@index([organizationId, status])
+  @@index([status])
+  @@map("agents")
+}
+
+model AgentExecution {
+  id            String   @id @default(uuid())
+  agentId       String
+  userId        Int
+  status        ExecutionStatus
+  input         Json?
+  output        Json?
+  error         String?  @db.Text
+  logs          String?  @db.Text
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  duration      Int?     // milliseconds
+
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, status, startedAt])
+  @@index([userId, startedAt])
+  @@index([status])
+  @@map("agent_executions")
+}
+
+enum AgentStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Vector Search System
+model Collection {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?  @db.Text
+  userId        Int
+  organizationId String?
+  dimensions    Int      // Vector dimensions (e.g., 1536 for OpenAI embeddings)
+  distance      DistanceMetric @default(COSINE)
+  status        CollectionStatus @default(ACTIVE)
+  vectorCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  vectors       Vector[]
+
+  @@unique([name, userId])
+  @@index([userId, status])
+  @@index([organizationId, status])
+  @@index([status])
+  @@map("collections")
+}
+
+model Vector {
+  id            String   @id @default(uuid())
+  collectionId  String
+  vector        Json     // Vector embedding (array of numbers)
+  metadata      Json?    // Additional metadata (tags, categories, etc.)
+  text          String?  @db.Text // Original text content
+  createdAt     DateTime @default(now())
+
+  // Relations
+  collection    Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([collectionId])
+  @@index([collectionId, createdAt])
+  @@map("vectors")
+}
+
+enum DistanceMetric {
+  COSINE
+  EUCLIDEAN
+  DOT_PRODUCT
+}
+
+enum CollectionStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+// Workflow Automation System
+model Workflow {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?  @db.Text
+  userId        Int
+  organizationId String?
+  definition    Json     // Workflow definition (nodes, edges, config)
+  status        WorkflowStatus @default(DRAFT)
+  version       Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  executions    WorkflowExecution[]
+  triggers      WorkflowTrigger[]
+
+  @@unique([name, userId, version])
+  @@index([userId, status])
+  @@index([organizationId, status])
+  @@index([status])
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id            String   @id @default(uuid())
+  workflowId    String
+  userId        Int
+  status        ExecutionStatus
+  input         Json?
+  output        Json?
+  error         String?  @db.Text
+  logs          String?  @db.Text
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  duration      Int?     // milliseconds
+
+  workflow      Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, status, startedAt])
+  @@index([userId, startedAt])
+  @@index([status])
+  @@map("workflow_executions")
+}
+
+model WorkflowTrigger {
+  id            String   @id @default(uuid())
+  workflowId    String
+  type          TriggerType
+  config        Json     // Trigger configuration (schedule, webhook URL, etc.)
+  enabled       Boolean  @default(true)
+  lastTriggered DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workflow      Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, enabled])
+  @@index([type, enabled])
+  @@map("workflow_triggers")
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum TriggerType {
+  MANUAL
+  SCHEDULE
+  WEBHOOK
+  EVENT
+}
+
+// Data Pipeline System
+model Pipeline {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?  @db.Text
+  userId        Int
+  organizationId String?
+  definition    Json     // Pipeline definition (steps, connectors, transformations)
+  status        PipelineStatus @default(DRAFT)
+  schedule      String?  // Cron expression for scheduled runs
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  runs          PipelineRun[]
+
+  @@unique([name, userId])
+  @@index([userId, status])
+  @@index([organizationId, status])
+  @@index([status])
+  @@map("pipelines")
+}
+
+model PipelineRun {
+  id            String   @id @default(uuid())
+  pipelineId    String
+  userId        Int
+  status        ExecutionStatus
+  input         Json?
+  output        Json?
+  error         String?  @db.Text
+  logs          String?  @db.Text
+  recordsProcessed Int?
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  duration      Int?     // milliseconds
+
+  pipeline      Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([pipelineId, status, startedAt])
+  @@index([userId, startedAt])
+  @@index([status])
+  @@map("pipeline_runs")
+}
+
+enum PipelineStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+model Connector {
+  id            String   @id @default(uuid())
+  name          String
+  type          String   // 's3', 'google_sheets', 'slack', 'gmail', 'google_calendar', etc.
+  userId        Int
+  organizationId String?
+  config        Json     // Encrypted credentials and configuration
+  status        ConnectorStatus @default(ACTIVE)
+  lastTested    DateTime?
+  lastError     String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type])
+  @@index([organizationId, type])
+  @@index([status])
+  @@map("connectors")
+}
+
+enum ConnectorStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+model Schedule {
+  id            String   @id @default(uuid())
+  name          String
+  resourceType  String   // 'workflow' | 'pipeline'
+  resourceId    String   // workflowId or pipelineId
+  userId        Int
+  organizationId String?
+  cronExpression String  // e.g., "0 0 * * *" (daily at midnight)
+  timezone      String   @default("UTC")
+  enabled       Boolean  @default(true)
+  lastRun       DateTime?
+  nextRun       DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([resourceType, resourceId])
+  @@index([enabled, nextRun])
+  @@index([userId])
+  @@map("schedules")
+}
+
+model Webhook {
+  id            String   @id @default(uuid())
+  name          String
+  resourceType  String   // 'workflow' | 'pipeline'
+  resourceId    String
+  userId        Int
+  organizationId String?
+  url           String   // Unique webhook URL
+  secret        String   // Webhook secret for verification
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@unique([url])
+  @@index([resourceType, resourceId])
+  @@index([userId])
+  @@map("webhooks")
+}
+
+model ExecutionMetric {
+  id            String   @id @default(uuid())
+  resourceType  String   // 'agent' | 'workflow' | 'pipeline'
+  resourceId    String
+  executionId   String
+  userId        Int
+  organizationId String?
+  
+  // Performance metrics
+  duration      Int      // milliseconds
+  memoryUsage   Int?     // bytes
+  cpuUsage      Float?   // percentage
+  
+  // Cost metrics
+  apiCalls      Int      @default(0) // Number of API calls
+  tokensUsed    Int?     // LLM tokens
+  cost          Float?   // Estimated cost in USD
+  
+  // Status
+  status        ExecutionStatus
+  errorType     String?
+  
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([resourceType, resourceId, createdAt])
+  @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+  @@map("execution_metrics")
+}
+
+model UsageAnalytics {
+  id            String   @id @default(uuid())
+  userId        Int?
+  organizationId String?
+  date          DateTime @db.Date
+  
+  // Daily aggregates
+  agentsExecuted Int     @default(0)
+  workflowsExecuted Int  @default(0)
+  pipelinesExecuted Int  @default(0)
+  vectorsSearched Int   @default(0)
+  
+  // API usage
+  apiCalls      Int      @default(0)
+  tokensUsed    Int      @default(0)
+  cost          Float    @default(0)
+  
+  createdAt     DateTime @default(now())
+
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, date])
+  @@unique([organizationId, date])
+  @@index([userId, date])
+  @@index([organizationId, date])
+  @@map("usage_analytics")
+}

@@ -1,0 +1,265 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 9 100% 64%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 9 100% 64%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 91%;
+    --input: 0 0% 91%;
+    --ring: 9 100% 64%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(9 100% 64%), hsl(0 100% 70%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 99%), hsl(0 0% 97%));
+    --shadow-soft: 0 2px 20px -4px hsl(9 100% 64% / 0.15);
+    --shadow-elevation: 0 4px 24px -8px hsl(0 0% 0% / 0.08);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Dashboard Layout */
+    --dashboard-header-height: 64px;
+    --dashboard-sidebar-width: 280px;
+    --dashboard-sidebar-icon-bar-width: 56px;
+    --dashboard-sidebar-content-width: 224px;
+    --dashboard-content-padding: 32px;
+    
+    /* Enterprise Shadows */
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-border: 0 0 0 1px rgb(0 0 0 / 0.05);
+    
+    /* Premium Sidebar Colors - Professional & Sophisticated */
+    --sidebar-navy: 222 28% 15%;
+    --sidebar-navy-lighter: 222 24% 20%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-content-bg: 0 0% 99%;
+    --sidebar-foreground: 222 25% 18%;
+    --sidebar-text-secondary: 220 10% 50%;
+    --sidebar-primary: 9 100% 64%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 97%;
+    --sidebar-accent-foreground: 222 25% 18%;
+    --sidebar-border: 220 14% 92%;
+    --sidebar-ring: 9 100% 64%;
+    --sidebar-active-indicator: 9 100% 64%;
+    --sidebar-item-hover: 220 16% 96%;
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 9 100% 64%;
+    --primary-foreground: 0 0% 10%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 9 100% 64%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 9 100% 64%;
+    
+    --sidebar-background: 222 28% 12%;
+    --sidebar-content-bg: 222 28% 14%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-text-secondary: 220 10% 65%;
+    --sidebar-primary: 9 100% 64%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 28% 18%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 222 28% 20%;
+    --sidebar-ring: 9 100% 64%;
+    --sidebar-active-indicator: 9 100% 64%;
+    --sidebar-item-hover: 222 28% 16%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    overflow-x: hidden;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: 'Crimson Pro', serif;
+  }
+  
+  .font-sans {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-[hsl(0,100%,70%)];
+  }
+
+  /* Premium background pattern with grid and diagonal lines */
+  .bg-grid-pattern {
+    background-color: hsl(var(--background));
+    background-image: 
+      /* Diagonal dashed lines - very faint, subtle */
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 28px,
+        hsl(0 0% 85% / 0.08) 28px,
+        hsl(0 0% 85% / 0.08) 30px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 28px,
+        hsl(0 0% 85% / 0.06) 28px,
+        hsl(0 0% 85% / 0.06) 30px
+      ),
+      /* Grid pattern - very subtle light gray */
+      linear-gradient(
+        hsl(0 0% 88% / 0.15) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        90deg,
+        hsl(0 0% 88% / 0.15) 1px,
+        transparent 1px
+      );
+    background-size: 
+      40px 40px,
+      40px 40px,
+      30px 30px,
+      30px 30px;
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+
+  .dark .bg-grid-pattern {
+    background-image: 
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 28px,
+        hsl(0 0% 50% / 0.08) 28px,
+        hsl(0 0% 50% / 0.08) 30px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 28px,
+        hsl(0 0% 50% / 0.06) 28px,
+        hsl(0 0% 50% / 0.06) 30px
+      ),
+      linear-gradient(
+        hsl(0 0% 50% / 0.15) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        90deg,
+        hsl(0 0% 50% / 0.15) 1px,
+        transparent 1px
+      );
+  }
+
+  /* Dashboard Components */
+  .dashboard-card {
+    @apply bg-card border border-border rounded-lg p-6 transition-all duration-200;
+    box-shadow: var(--shadow-card);
+  }
+
+  .dashboard-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .dashboard-heading {
+    @apply text-2xl font-semibold text-foreground tracking-tight;
+  }
+
+  /* Premium Sidebar Enhancements */
+  .sidebar-nav-item {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.05), transparent);
+    transition: width 0.3s ease;
+  }
+
+  .sidebar-nav-item:hover::before {
+    width: 100%;
+  }
+
+  /* Premium Scrollbar for Sidebar */
+  nav::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  nav::-webkit-scrollbar-thumb {
+    background: hsl(var(--sidebar-border));
+    border-radius: 3px;
+  }
+
+  nav::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--sidebar-text-secondary));
+  }
+}
