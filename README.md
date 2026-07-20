@@ -237,11 +237,7 @@ If MultiOps is useful to you, consider giving it a star — it genuinely helps t
 
 ---
 
-## 📄 License
 
-Distributed under the MIT License. See [`LICENSE`](./LICENSE) for details.
-
----
 
 <div align="center">
 
