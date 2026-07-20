@@ -32,6 +32,7 @@ model User {
   pipelines     Pipeline[]
   pipelineRuns  PipelineRun[]
   connectors    Connector[]
+  connectorExecutions ConnectorExecution[]
   schedules     Schedule[]
   webhooks      Webhook[]
   executionMetrics ExecutionMetric[]
@@ -349,7 +350,7 @@ enum PipelineStatus {
 model Connector {
   id            String   @id @default(uuid())
   name          String
-  type          String   // 's3', 'google_sheets', 'slack', 'gmail', 'google_calendar', etc.
+  type          String   // 'supabase', 'google_sheets', 'slack', 'gmail', 'google_calendar', etc.
   userId        Int
   organizationId String?
   config        Json     // Encrypted credentials and configuration
@@ -361,11 +362,32 @@ model Connector {
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  executions    ConnectorExecution[]
 
   @@index([userId, type])
   @@index([organizationId, type])
   @@index([status])
   @@map("connectors")
+}
+
+model ConnectorExecution {
+  id            String   @id @default(uuid())
+  connectorId   String
+  pipelineId    String?
+  workflowId    String?
+  userId        Int
+  rowsRetrieved Int      @default(0)
+  duration      Int      // milliseconds
+  status        ExecutionStatus
+  error         String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([connectorId, createdAt])
+  @@index([userId, createdAt])
+  @@map("connector_executions")
 }
 
 enum ConnectorStatus {

@@ -3,10 +3,10 @@
  * Executes data pipelines with connectors and transformations
  */
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const fs = require('fs').promises;
 const analyticsService = require('./analytics/AnalyticsService');
+const connectorService = require('./connectorService');
 const path = require('path');
 
 class PipelineEngine {
@@ -40,6 +40,7 @@ class PipelineEngine {
 
     // Execution context
     const context = {
+      pipelineId,
       input,
       data: input,
       variables: { ...input },
@@ -147,6 +148,17 @@ class PipelineEngine {
     const connectorType = step.connector || step.data?.connector;
     const config = step.config || step.data?.config || {};
 
+    // Persisted connectors are identified by UUID, keeping pipeline logic independent of connector vendors.
+    if (typeof connectorType === 'string' && /^[0-9a-f-]{36}$/i.test(connectorType)) {
+      const connector = await connectorService.getOwnedConnector(connectorType, userId);
+      const instance = connectorService.getConnectorInstance(connector);
+      if (connector.type === 'supabase') {
+        const result = await connectorService.explorer(connector.id, userId, 'read', [{ ...config, table: config.table }], { pipelineId: context.pipelineId });
+        return result.rows;
+      }
+      return instance.read(config);
+    }
+
     switch (connectorType) {
       case 'static':
         // Static data connector
@@ -205,18 +217,6 @@ class PipelineEngine {
             return Array.isArray(data) ? data : [data];
           } catch (error) {
             throw new Error(`API connector failed: ${error.message}`);
-          }
-        }
-        return [];
-
-      case 'database':
-        // Database connector (PostgreSQL)
-        if (config.query) {
-          try {
-            const result = await prisma.$queryRawUnsafe(config.query);
-            return Array.isArray(result) ? result : [result];
-          } catch (error) {
-            throw new Error(`Database query failed: ${error.message}`);
           }
         }
         return [];

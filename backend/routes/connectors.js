@@ -1,10 +1,9 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const connectorService = require('../services/connectorService');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Get available connector types
 router.get('/types', authenticateToken, async (req, res) => {
@@ -245,6 +244,32 @@ router.post('/:id/test', authenticateToken, async (req, res) => {
       message: error.message || 'Failed to test connector',
     });
   }
+});
+
+// Relational database explorer (all operations use connector-owned credentials)
+router.get('/:id/explorer/schemas', authenticateToken, async (req, res) => {
+  try { res.json({ success: true, data: { schemas: await connectorService.explorer(req.params.id, req.user.userId, 'schemas') } }); }
+  catch (error) { res.status(400).json({ success: false, message: error.message }); }
+});
+router.get('/:id/explorer/tables', authenticateToken, async (req, res) => {
+  try { res.json({ success: true, data: { tables: await connectorService.explorer(req.params.id, req.user.userId, 'tables', [req.query.schema || 'public']) } }); }
+  catch (error) { res.status(400).json({ success: false, message: error.message }); }
+});
+router.get('/:id/explorer/tables/:table/metadata', authenticateToken, async (req, res) => {
+  try { const args = [req.query.schema || 'public', req.params.table]; const [columns, keys, indexes] = await Promise.all(['columns', 'keys', 'indexes'].map(action => connectorService.explorer(req.params.id, req.user.userId, action, args))); res.json({ success: true, data: { columns, keys, indexes, relationships: keys.filter(key => key.constraint_type === 'FOREIGN KEY') } }); }
+  catch (error) { res.status(400).json({ success: false, message: error.message }); }
+});
+router.get('/:id/explorer/tables/:table/preview', authenticateToken, async (req, res) => {
+  try { const options = { schema: req.query.schema || 'public', table: req.params.table, limit: req.query.limit, offset: req.query.offset, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection }; const result = await connectorService.explorer(req.params.id, req.user.userId, 'read', [options]); res.json({ success: true, data: result }); }
+  catch (error) { res.status(400).json({ success: false, message: error.message }); }
+});
+router.post('/:id/explorer/query', authenticateToken, async (req, res) => {
+  try { const result = await connectorService.explorer(req.params.id, req.user.userId, 'query', [req.body.query]); res.json({ success: true, data: result }); }
+  catch (error) { res.status(400).json({ success: false, message: error.message }); }
+});
+router.get('/:id/executions', authenticateToken, async (req, res) => {
+  try { await connectorService.getOwnedConnector(req.params.id, req.user.userId); const executions = await prisma.connectorExecution.findMany({ where: { connectorId: req.params.id }, orderBy: { createdAt: 'desc' }, take: Math.min(Number(req.query.limit) || 50, 200) }); res.json({ success: true, data: { executions } }); }
+  catch (error) { res.status(400).json({ success: false, message: error.message }); }
 });
 
 module.exports = router;

@@ -1,10 +1,9 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const workflowEngine = require('../services/workflowEngine');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // ==================== WORKFLOWS ====================
 

@@ -117,6 +117,23 @@ class ConnectorsAPI {
   async testConnector(id: string): Promise<TestConnectorResponse> {
     return this.request<TestConnectorResponse>('POST', `/${id}/test`);
   }
+
+  async getTables(id: string, schema = 'public'): Promise<any> {
+    return this.request<any>('GET', `/${id}/explorer/tables?schema=${encodeURIComponent(schema)}`);
+  }
+
+  async getSchemas(id: string): Promise<any> {
+    return this.request<any>('GET', `/${id}/explorer/schemas`);
+  }
+
+  async getTableMetadata(id: string, table: string, schema = 'public'): Promise<any> {
+    return this.request<any>('GET', `/${id}/explorer/tables/${encodeURIComponent(table)}/metadata?schema=${encodeURIComponent(schema)}`);
+  }
+
+  async previewTable(id: string, table: string, options: Record<string, string | number> = {}): Promise<any> {
+    const query = new URLSearchParams({ schema: String(options.schema || 'public'), limit: String(options.limit || 20), ...(options.sortBy ? { sortBy: String(options.sortBy) } : {}), ...(options.sortDirection ? { sortDirection: String(options.sortDirection) } : {}) });
+    return this.request<any>('GET', `/${id}/explorer/tables/${encodeURIComponent(table)}/preview?${query}`);
+  }
 }
 
 export const connectorsAPI = new ConnectorsAPI();

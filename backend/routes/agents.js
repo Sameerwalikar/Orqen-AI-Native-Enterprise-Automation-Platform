@@ -1,10 +1,9 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const { executionQueue } = require('../services/agentExecutor');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Get all agents for the authenticated user
 router.get('/', authenticateToken, async (req, res) => {

@@ -1,15 +1,15 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const crypto = require('crypto');
-const S3Connector = require('./connectors/s3/S3Connector');
+const SupabaseConnector = require('./connectors/supabase/SupabaseConnector');
 const GoogleSheetsConnector = require('./connectors/googleSheets/GoogleSheetsConnector');
 const GmailConnector = require('./connectors/gmail/GmailConnector');
 const GoogleCalendarConnector = require('./connectors/googleCalendar/GoogleCalendarConnector');
 const SlackConnector = require('./connectors/slack/SlackConnector');
 
-const prisma = new PrismaClient();
 
 // Encryption key (in production, use environment variable)
-const ENCRYPTION_KEY = process.env.CONNECTOR_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+// A stable key is essential: random startup keys make saved credentials undecryptable after restart.
+const ENCRYPTION_KEY = crypto.createHash('sha256').update(process.env.CONNECTOR_ENCRYPTION_KEY || process.env.DATABASE_URL || 'development-connector-key').digest('hex');
 const ALGORITHM = 'aes-256-cbc';
 
 class ConnectorService {
@@ -44,8 +44,8 @@ class ConnectorService {
     const config = this.decryptConfig(connector.config);
     
     switch (connector.type) {
-      case 's3':
-        return new S3Connector(config);
+      case 'supabase':
+        return new SupabaseConnector(config);
       case 'google_sheets':
         return new GoogleSheetsConnector(config);
       case 'slack':
@@ -67,7 +67,7 @@ class ConnectorService {
     
     const decrypted = { ...config };
     // Decrypt sensitive fields
-    const sensitiveFields = ['accessKeyId', 'secretAccessKey', 'token', 'refresh_token', 'access_token', 'bot_token', 'apiKey'];
+    const sensitiveFields = ['password', 'connectionString', 'token', 'refresh_token', 'access_token', 'bot_token', 'apiKey'];
     
     sensitiveFields.forEach(field => {
       if (decrypted[field] && typeof decrypted[field] === 'string') {
@@ -90,7 +90,7 @@ class ConnectorService {
     
     const encrypted = { ...config };
     // Encrypt sensitive fields
-    const sensitiveFields = ['accessKeyId', 'secretAccessKey', 'token', 'refresh_token', 'access_token', 'bot_token', 'apiKey'];
+    const sensitiveFields = ['password', 'connectionString', 'token', 'refresh_token', 'access_token', 'bot_token', 'apiKey'];
     
     sensitiveFields.forEach(field => {
       if (encrypted[field] && typeof encrypted[field] === 'string') {
@@ -107,17 +107,15 @@ class ConnectorService {
   getAvailableConnectorTypes() {
     return [
       {
-        id: 's3',
-        name: 'AWS S3 / MinIO',
-        description: 'Connect to AWS S3 or S3-compatible storage (MinIO)',
+        id: 'supabase',
+        name: 'Supabase',
+        description: 'Read data from the workspace database or another Supabase PostgreSQL database',
         icon: 'database',
-        requiresAuth: true,
+        requiresAuth: false,
         config: {
-          accessKeyId: { type: 'string', label: 'Access Key ID', required: true, secret: true },
-          secretAccessKey: { type: 'string', label: 'Secret Access Key', required: true, secret: true },
-          region: { type: 'string', label: 'Region', required: false, default: 'us-east-1' },
-          bucket: { type: 'string', label: 'Bucket Name', required: true },
-          endpoint: { type: 'string', label: 'Custom Endpoint (for MinIO)', required: false },
+          mode: { type: 'select', label: 'Connection mode', default: 'default', options: ['default', 'advanced'] },
+          host: { type: 'string', label: 'Host' }, database: { type: 'string', label: 'Database' }, port: { type: 'number', label: 'Port', default: 5432 },
+          username: { type: 'string', label: 'Username' }, password: { type: 'string', label: 'Password', secret: true }, sslMode: { type: 'select', label: 'SSL mode', default: 'require', options: ['require', 'prefer', 'disable'] }, verifyCertificate: { type: 'boolean', label: 'Verify certificate', default: true }, timeout: { type: 'number', label: 'Timeout (seconds)', default: 10 },
         },
       },
       {
@@ -205,6 +203,31 @@ class ConnectorService {
 
       throw error;
     }
+  }
+
+  async getOwnedConnector(id, userId) {
+    const connector = await prisma.connector.findFirst({ where: { id, userId } });
+    if (!connector) throw new Error('Connector not found');
+    return connector;
+  }
+
+  async explorer(id, userId, action, args = [], context = {}) {
+    const connector = await this.getOwnedConnector(id, userId);
+    if (connector.type !== 'supabase') throw new Error('Database explorer is available only for relational connectors');
+    const instance = this.getConnectorInstance(connector);
+    const started = Date.now();
+    try {
+      const result = await instance[action](...args);
+      await this.recordExecution(connector, userId, context, result?.rowCount || (Array.isArray(result) ? result.length : 0), Date.now() - started, 'COMPLETED');
+      return result;
+    } catch (error) {
+      await this.recordExecution(connector, userId, context, 0, Date.now() - started, 'FAILED', error.message);
+      throw error;
+    }
+  }
+
+  async recordExecution(connector, userId, context, rowsRetrieved, duration, status, error = null) {
+    return prisma.connectorExecution.create({ data: { connectorId: connector.id, userId, pipelineId: context.pipelineId, workflowId: context.workflowId, rowsRetrieved, duration, status, error } });
   }
 }
 

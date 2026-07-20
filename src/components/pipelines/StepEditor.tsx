@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { agentsAPI } from '@/lib/api/agents';
 import { vectorsAPI } from '@/lib/api/vectors';
 import { pipelinesAPI } from '@/lib/api/pipelines';
+import { connectorsAPI } from '@/lib/api/connectors';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,12 @@ export const StepEditor = () => {
     queryKey: ['connectors'],
     queryFn: () => pipelinesAPI.getAvailableConnectors(),
     enabled: selectedNode?.type === 'connector',
+  });
+  const activeConnector = connectorsData?.data?.connectors?.find((connector: any) => connector.id === stepData.connector);
+  const { data: tablesData } = useQuery({
+    queryKey: ['connectorTables', stepData.connector],
+    queryFn: () => connectorsAPI.getTables(stepData.connector),
+    enabled: selectedNode?.type === 'connector' && activeConnector?.type === 'supabase' && !!stepData.connector,
   });
 
   useEffect(() => {
@@ -126,6 +133,10 @@ export const StepEditor = () => {
                 </SelectContent>
               </Select>
             </div>
+            {activeConnector?.type === 'supabase' && <>
+              <div className="space-y-2"><Label>Table</Label><Select value={stepData.config?.table || ''} onValueChange={(table) => handleUpdate('config', { ...(stepData.config || {}), table })}><SelectTrigger><SelectValue placeholder="Select a table" /></SelectTrigger><SelectContent>{tablesData?.data?.tables?.map((table: any) => <SelectItem key={table.table_name} value={table.table_name}>{table.table_name}</SelectItem>)}</SelectContent></Select></div>
+              <div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label>Sort column</Label><Input value={stepData.config?.sortBy || ''} onChange={(e) => handleUpdate('config', { ...(stepData.config || {}), sortBy: e.target.value })} /></div><div className="space-y-2"><Label>Limit</Label><Input type="number" value={stepData.config?.limit || 20} onChange={(e) => handleUpdate('config', { ...(stepData.config || {}), limit: Number(e.target.value) })} /></div></div>
+            </>}
             <div className="space-y-2">
               <Label htmlFor="operation">Operation</Label>
               <Select

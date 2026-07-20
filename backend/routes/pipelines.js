@@ -1,10 +1,9 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const pipelineEngine = require('../services/pipelineEngine');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // ==================== PIPELINES ====================
 
@@ -455,7 +454,7 @@ router.get('/:id/runs', authenticateToken, async (req, res) => {
 // Get available connectors
 router.get('/connectors/available', authenticateToken, async (req, res) => {
   try {
-    const connectors = pipelineEngine.getAvailableConnectors();
+    const connectors = await prisma.connector.findMany({ where: { userId: req.user.userId, status: 'ACTIVE' }, select: { id: true, name: true, type: true } });
 
     res.status(200).json({
       success: true,

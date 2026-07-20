@@ -1,12 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { OAuth2Client } = require('google-auth-library');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Google OAuth client (used for verifying ID tokens from the frontend)
 const googleClientId = process.env.GOOGLE_CLIENT_ID;

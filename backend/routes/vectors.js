@@ -1,11 +1,10 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const embeddingService = require('../services/embeddingService');
 const vectorSearchService = require('../services/vectorSearchService');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // ==================== COLLECTIONS ====================
 

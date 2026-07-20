@@ -1,10 +1,9 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const analyticsService = require('../services/analytics/AnalyticsService');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Get analytics overview
 router.get('/overview', authenticateToken, async (req, res) => {
