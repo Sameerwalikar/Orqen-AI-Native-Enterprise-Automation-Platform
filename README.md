@@ -18,11 +18,11 @@ Deploy AI agents, orchestrate workflows, and build intelligent data pipelines �
 
 ---
 
-## ✨ What is MultiOps?
+## ✨ What is Orqen-AI?
 
-**MultiOps** is an open, AI-native workspace that lets teams build and run multi-agent systems the same way they'd build software — composably, observably, and at scale.
+**Orqen-AI** is an open, AI-native workspace that lets teams build and run multi-agent systems the same way they'd build software — composably, observably, and at scale.
 
-Instead of stitching together separate tools for AI agents, vector search, automation, and data movement, MultiOps unifies them into a single platform where every piece talks to every other piece out of the box.
+Instead of stitching together separate tools for AI agents, vector search, automation, and data movement, Orqen-AI unifies them into a single platform where every piece talks to every other piece out of the box.
 
 ```
   Agents  →  Vectors (RAG)  →  Workflows  →  Pipelines  →  Connectors

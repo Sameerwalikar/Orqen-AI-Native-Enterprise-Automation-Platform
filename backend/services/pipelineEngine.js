@@ -38,15 +38,21 @@ class PipelineEngine {
       throw new Error('Pipeline has no steps');
     }
 
-    // Execution context
+    // Execution context passed to every step. `data` is always the prior step's output.
     const context = {
       pipelineId,
+      executionId: `pipeline-${pipelineId}-${Date.now()}`,
+      organizationId: pipeline.organizationId,
       input,
       data: input,
       variables: { ...input },
       currentStep: 0,
       executionLog: [],
       recordsProcessed: 0,
+      nodeResults: [],
+      errors: [],
+      tokensUsed: 0,
+      apiCalls: 0,
     };
 
     // Execute pipeline steps sequentially
@@ -55,15 +61,16 @@ class PipelineEngine {
         context.currentStep = i;
         const step = steps[i];
 
-        context.executionLog.push({
-          step: i,
-          stepType: step.type,
-          timestamp: new Date().toISOString(),
-          message: `Executing step ${i + 1}: ${step.label || step.type}`,
-        });
-
-        // Execute step
-        const stepResult = await this.executeStep(step, context, userId);
+        const startedAt = Date.now();
+        const nodeResult = { step: i, stepId: step.id, label: step.label || step.type, stepType: step.type, status: 'RUNNING', startedAt: new Date().toISOString(), input: context.data };
+        let stepResult;
+        try { stepResult = await this.executeStep(step, context, userId); nodeResult.status = 'COMPLETED'; }
+        catch (error) { nodeResult.status = 'FAILED'; nodeResult.error = error.message; context.errors.push({ step: i, stepId: step.id, error: error.message }); stepResult = Array.isArray(context.data) ? context.data : []; }
+        nodeResult.output = stepResult;
+        nodeResult.completedAt = new Date().toISOString();
+        nodeResult.duration = Date.now() - startedAt;
+        nodeResult.rowsProcessed = Array.isArray(stepResult) ? stepResult.length : 1;
+        context.nodeResults.push(nodeResult);
 
         // Update context with step result
         if (stepResult) {
@@ -74,13 +81,7 @@ class PipelineEngine {
           context.data = stepResult;
         }
 
-        context.executionLog.push({
-          step: i,
-          stepType: step.type,
-          timestamp: new Date().toISOString(),
-          message: `Completed step ${i + 1}`,
-          recordsProcessed: Array.isArray(stepResult) ? stepResult.length : 1,
-        });
+        context.executionLog.push(nodeResult);
 
         if (Array.isArray(stepResult)) {
           context.recordsProcessed += stepResult.length;
@@ -94,6 +95,8 @@ class PipelineEngine {
         output: context.data,
         recordsProcessed: context.recordsProcessed,
         logs: context.executionLog,
+        nodeResults: context.nodeResults,
+        errors: context.errors,
       };
     } catch (error) {
       context.executionLog.push({
@@ -257,10 +260,21 @@ class PipelineEngine {
    * @returns {object} - Transformed item
    */
   applyTransform(item, transform, variables) {
+    const resolve = (value) => {
+      if (Array.isArray(value)) return value.map(resolve);
+      if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, resolve(nested)]));
+      if (typeof value === 'string' && value.startsWith('$')) {
+        const get = (source, path) => path.split('.').reduce((current, key) => current?.[key], source);
+        return get(item, value.slice(1)) ?? get(variables, value.slice(1)) ?? null;
+      }
+      return value;
+    };
     if (typeof transform === 'object') {
       const result = {};
       for (const [key, value] of Object.entries(transform)) {
-        if (typeof value === 'string' && value.startsWith('$')) {
+        if (typeof value === 'object') {
+          result[key] = resolve(value);
+        } else if (typeof value === 'string' && value.startsWith('$')) {
           // Variable reference
           result[key] = variables[value.substring(1)] || item[value.substring(1)];
         } else if (typeof value === 'string' && value.includes('${')) {

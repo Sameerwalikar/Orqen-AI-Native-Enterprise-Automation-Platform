@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const schedulerService = require('../services/scheduler/SchedulerService');
+const { getNextRun } = require('../services/scheduler/cronValidation');
 
 const router = express.Router();
 
@@ -84,21 +85,9 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Validate cron expression
-    const cron = require('node-cron');
-    if (!cron.validate(cronExpression)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid cron expression',
-      });
-    }
-
-    // Calculate next run time
-    const parser = require('cron-parser');
-    const interval = parser.parseExpression(cronExpression, {
-      tz: timezone || 'UTC',
-    });
-    const nextRun = interval.next().toDate();
+    let nextRun;
+    try { nextRun = getNextRun(cronExpression, timezone || 'UTC'); }
+    catch (error) { return res.status(400).json({ success: false, message: error.message }); }
 
     const schedule = await prisma.schedule.create({
       data: {
@@ -157,22 +146,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (timezone) updateData.timezone = timezone;
     if (enabled !== undefined) updateData.enabled = enabled;
     if (cronExpression) {
-      // Validate cron expression
-      const cron = require('node-cron');
-      if (!cron.validate(cronExpression)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid cron expression',
-        });
-      }
+      try { updateData.nextRun = getNextRun(cronExpression, timezone || existingSchedule.timezone); }
+      catch (error) { return res.status(400).json({ success: false, message: error.message }); }
       updateData.cronExpression = cronExpression;
-      
-      // Recalculate next run
-      const parser = require('cron-parser');
-      const interval = parser.parseExpression(cronExpression, {
-        tz: timezone || existingSchedule.timezone,
-      });
-      updateData.nextRun = interval.next().toDate();
     }
 
     const updatedSchedule = await prisma.schedule.update({

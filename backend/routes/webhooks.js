@@ -94,6 +94,8 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const webhook = await prisma.webhook.create({
       data: {
+        // The public URL token and persisted identifier must be identical.
+        id: webhookId,
         name,
         resourceType,
         resourceId,
@@ -210,15 +212,17 @@ router.post('/trigger/:id', async (req, res) => {
     const signature = req.headers['x-webhook-signature'] || req.headers['x-signature'];
     const payload = req.body;
 
-    await schedulerService.handleWebhook(id, payload, signature);
+    const result = await schedulerService.handleWebhook(id, payload, signature);
 
     res.status(200).json({
       success: true,
       message: 'Webhook triggered successfully',
+      data: result,
     });
   } catch (error) {
     console.error('Webhook trigger error:', error);
-    res.status(500).json({
+    const status = /not found/i.test(error.message) ? 404 : /signature/i.test(error.message) ? 401 : 500;
+    res.status(status).json({
       success: false,
       message: error.message || 'Failed to trigger webhook',
     });
