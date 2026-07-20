@@ -37,7 +37,7 @@ const Navigation = () => {
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-br from-primary via-primary/90 to-primary/70 rounded-xl shadow-lg shadow-primary/20 transition-all duration-300 group-hover:scale-105 flex-shrink-0"></div>
               <span className="text-xl font-bold font-serif tracking-tight text-foreground">
-                MultiOps
+                Orqen-AI
               </span>
             </div>
           </a>
@@ -62,9 +62,9 @@ const Navigation = () => {
           {/* CTA Button with Image */}
           <div className="hidden md:flex items-center">
             <a
-              href="https://cal.com/natty-boy-xmgs67/secret"
+              href="https://www.linkedin.com/in/sameer-walikar/"
               target="_blank"
-              rel="noopener noreferrer"
+
             >
               <Button
                 variant="default"
@@ -73,8 +73,8 @@ const Navigation = () => {
               >
                 <span className="text-white">Talk to Founders</span>
                 <img
-                  src="/nara.jpg"
-                  alt="Nara"
+                  src="/sameer.jpeg"
+                  alt="Sameer"
                   className="h-6 w-6 rounded-full border border-white/20 object-cover"
                 />
               </Button>

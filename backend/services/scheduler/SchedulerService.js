@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const parser = require('cron-parser');
+const { getNextRun } = require('./cronValidation');
 const prisma = require('../../lib/prisma');
 const workflowEngine = require('../workflowEngine');
 const pipelineEngine = require('../pipelineEngine');
@@ -111,10 +111,7 @@ class SchedulerService {
    */
   calculateNextRun(cronExpression, timezone = 'UTC') {
     try {
-      const interval = parser.parseExpression(cronExpression, {
-        tz: timezone,
-      });
-      return interval.next().toDate();
+      return getNextRun(cronExpression, timezone);
     } catch (error) {
       console.error('Error calculating next run:', error);
       return null;
@@ -197,7 +194,9 @@ class SchedulerService {
   verifyWebhookSignature(payload, signature, secret) {
     const hmac = crypto.createHmac('sha256', secret);
     const digest = hmac.update(JSON.stringify(payload)).digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+    const received = Buffer.from(signature || '');
+    const expected = Buffer.from(digest);
+    return received.length === expected.length && crypto.timingSafeEqual(received, expected);
   }
 
   /**
@@ -205,30 +204,29 @@ class SchedulerService {
    */
   async handleWebhook(webhookId, payload, signature) {
     try {
-      const webhook = await prisma.webhook.findUnique({
-        where: { id: webhookId },
+      // New hooks use the primary key in their URL. The URL fallback keeps hooks
+      // created by the earlier, mismatched implementation triggerable.
+      const webhook = await prisma.webhook.findFirst({
+        where: { OR: [{ id: webhookId }, { url: { endsWith: `/trigger/${webhookId}` } }] },
       });
 
       if (!webhook || !webhook.enabled) {
         throw new Error('Webhook not found or disabled');
       }
 
-      // Verify signature if provided
-      if (signature && webhook.secret) {
-        const isValid = this.verifyWebhookSignature(payload, signature, webhook.secret);
-        if (!isValid) {
-          throw new Error('Invalid webhook signature');
-        }
+      if (webhook.secret && !this.verifyWebhookSignature(payload, signature, webhook.secret)) {
+        throw new Error('Invalid webhook signature');
       }
 
       // Execute based on resource type
+      let execution;
       if (webhook.resourceType === 'workflow') {
-        await workflowEngine.execute(webhook.resourceId, payload, webhook.userId);
+        execution = await workflowEngine.execute(webhook.resourceId, payload, webhook.userId);
       } else if (webhook.resourceType === 'pipeline') {
-        await pipelineEngine.execute(webhook.resourceId, payload, webhook.userId);
+        execution = await pipelineEngine.execute(webhook.resourceId, payload, webhook.userId);
       }
 
-      return { success: true };
+      return { success: true, execution };
     } catch (error) {
       console.error(`Error handling webhook ${webhookId}:`, error);
       throw error;
