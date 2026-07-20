@@ -99,10 +99,17 @@ export const useWorkflowBuilderStore = create<WorkflowBuilderState>((set, get) =
   },
   
   updateNode: (nodeId, data) => {
+    const updatedNodes = get().nodes.map((n) =>
+      n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
+    );
+    const selectedNode = get().selectedNode;
+    const updatedSelectedNode = selectedNode && selectedNode.id === nodeId
+      ? updatedNodes.find((n) => n.id === nodeId) || null
+      : selectedNode;
+
     set({
-      nodes: get().nodes.map((n) =>
-        n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
-      ),
+      nodes: updatedNodes,
+      selectedNode: updatedSelectedNode,
       isDirty: true,
     });
   },

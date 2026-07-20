@@ -66,8 +66,13 @@ export const StepEditor = () => {
     );
   }
 
-  const handleUpdate = (field: string, value: any) => {
-    const updatedData = { ...stepData, [field]: value };
+  const handleUpdate = (fieldOrData: string | Record<string, any>, value?: any) => {
+    let updatedData;
+    if (typeof fieldOrData === 'string') {
+      updatedData = { ...stepData, [fieldOrData]: value };
+    } else {
+      updatedData = { ...stepData, ...fieldOrData };
+    }
     setStepData(updatedData);
     updateNode(selectedNode.id, updatedData);
   };
@@ -104,20 +109,36 @@ export const StepEditor = () => {
         {selectedNode.type === 'connector' && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="connector">Connector Type</Label>
+              <Label htmlFor="connector">Connector</Label>
               <Select
                 value={stepData.connector || ''}
                 onValueChange={(value) => handleUpdate('connector', value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select connector" />
+                  <SelectValue placeholder="Select a connector" />
                 </SelectTrigger>
                 <SelectContent>
-                  {connectorsData?.data?.connectors?.map((connector: any) => (
-                    <SelectItem key={connector.id} value={connector.id}>
-                      {connector.name}
+                  {connectorsData?.data?.connectors?.map((conn: any) => (
+                    <SelectItem key={conn.id} value={conn.id}>
+                      {conn.name} ({conn.type})
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="operation">Operation</Label>
+              <Select
+                value={stepData.operation || 'read'}
+                onValueChange={(value) => handleUpdate('operation', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="read">Read</SelectItem>
+                  <SelectItem value="write">Write</SelectItem>
+                  <SelectItem value="query">Query</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -131,8 +152,8 @@ export const StepEditor = () => {
                   try {
                     const parsed = JSON.parse(e.target.value);
                     handleUpdate('config', parsed);
-                  } catch {
-                    // Invalid JSON, keep as string for now
+                  } catch (err) {
+                    // Don't update if invalid JSON while typing
                   }
                 }}
                 rows={4}
@@ -153,8 +174,8 @@ export const StepEditor = () => {
                 try {
                   const parsed = JSON.parse(e.target.value);
                   handleUpdate('transform', parsed);
-                } catch {
-                  // Invalid JSON
+                } catch (err) {
+                  // Don't update if invalid JSON while typing
                 }
               }}
               rows={6}
@@ -165,7 +186,7 @@ export const StepEditor = () => {
         {/* Filter Step */}
         {selectedNode.type === 'filter' && (
           <div className="space-y-2">
-            <Label htmlFor="filter">Filter (JSON)</Label>
+            <Label htmlFor="filter">Filter Expression (JSON)</Label>
             <Textarea
               id="filter"
               placeholder='{"field": "status", "operator": "equals", "value": "active"}'
@@ -174,11 +195,11 @@ export const StepEditor = () => {
                 try {
                   const parsed = JSON.parse(e.target.value);
                   handleUpdate('filter', parsed);
-                } catch {
-                  // Invalid JSON
+                } catch (err) {
+                  // Don't update if invalid JSON while typing
                 }
               }}
-              rows={4}
+              rows={6}
             />
           </div>
         )}
@@ -230,8 +251,10 @@ export const StepEditor = () => {
               value={stepData.agentId || ''}
               onValueChange={(value) => {
                 const agent = agentsData?.data?.agents?.find((a: any) => a.id === value);
-                handleUpdate('agentId', value);
-                handleUpdate('agentName', agent?.name || '');
+                handleUpdate({
+                  agentId: value,
+                  agentName: agent?.name || '',
+                });
               }}
             >
               <SelectTrigger>

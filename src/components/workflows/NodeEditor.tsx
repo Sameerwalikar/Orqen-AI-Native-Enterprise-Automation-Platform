@@ -50,8 +50,13 @@ export const NodeEditor = () => {
     );
   }
 
-  const handleUpdate = (field: string, value: any) => {
-    const updatedData = { ...nodeData, [field]: value };
+  const handleUpdate = (fieldOrData: string | Record<string, any>, value?: any) => {
+    let updatedData;
+    if (typeof fieldOrData === 'string') {
+      updatedData = { ...nodeData, [fieldOrData]: value };
+    } else {
+      updatedData = { ...nodeData, ...fieldOrData };
+    }
     setNodeData(updatedData);
     updateNode(selectedNode.id, updatedData);
   };
@@ -92,8 +97,10 @@ export const NodeEditor = () => {
               value={nodeData.agentId || ''}
               onValueChange={(value) => {
                 const agent = agentsData?.data?.agents?.find((a: any) => a.id === value);
-                handleUpdate('agentId', value);
-                handleUpdate('agentName', agent?.name || '');
+                handleUpdate({
+                  agentId: value,
+                  agentName: agent?.name || '',
+                });
               }}
             >
               <SelectTrigger>
