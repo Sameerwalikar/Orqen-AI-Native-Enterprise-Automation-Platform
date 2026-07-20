@@ -26,6 +26,7 @@ class EmbeddingService {
     }
 
     try {
+      const requestModel = this.model.includes('/') ? this.model : `openai/${this.model}`;
       const response = await fetch(`${this.apiBase}/embeddings`, {
         method: 'POST',
         headers: {
@@ -33,7 +34,7 @@ class EmbeddingService {
           'Authorization': `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: this.model,
+          model: requestModel,
           input: text.trim(),
         }),
       });
@@ -84,6 +85,7 @@ class EmbeddingService {
     }
 
     try {
+      const requestModel = this.model.includes('/') ? this.model : `openai/${this.model}`;
       const response = await fetch(`${this.apiBase}/embeddings`, {
         method: 'POST',
         headers: {
@@ -91,7 +93,7 @@ class EmbeddingService {
           'Authorization': `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: this.model,
+          model: requestModel,
           input: validTexts.map(text => text.trim()),
         }),
       });

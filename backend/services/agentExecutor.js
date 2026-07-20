@@ -3,6 +3,17 @@ const vectorSearchService = require('./vectorSearchService');
 const embeddingService = require('./embeddingService');
 const analyticsService = require('./analytics/AnalyticsService');
 const prisma = new PrismaClient();
+const config = require('../config');
+const { getLLMProvider } = require('./llm');
+const logger = require('../utils/logger');
+
+// Model mapping for OpenRouter to ensure cost-efficiency and prevent overspending
+const MODEL_MAPPING = {
+  'gpt-4': 'openai/gpt-4o-mini',
+  'gpt-4-turbo': 'openai/gpt-4o-mini',
+  'gpt-3.5-turbo': 'openai/gpt-4o-mini',
+  'gpt-5.1': 'openai/gpt-4o-mini',
+};
 
 // Simple in-memory queue (can be upgraded to BullMQ/Redis later)
 class ExecutionQueue {
@@ -51,23 +62,15 @@ class ExecutionQueue {
 
 class AgentExecutor {
   constructor() {
-    // Initialize OpenAI client if API key is available
-    this.openai = null;
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        // Dynamic import for OpenAI (ESM module)
-        // We'll use fetch API instead for compatibility
-        this.hasOpenAI = true;
-        this.apiKey = process.env.OPENAI_API_KEY;
-        this.apiBase = process.env.OPENAI_API_BASE || 'https://api.openai.com/v1';
-      } catch (error) {
-        console.warn('OpenAI not available:', error.message);
-        this.hasOpenAI = false;
-      }
-    } else {
-      this.hasOpenAI = false;
+    try {
+      this.provider = getLLMProvider();
+      this.hasLLM = true;
+    } catch (error) {
+      this.hasLLM = false;
+      logger.error('Failed to initialize LLM provider', { error: error.message });
     }
   }
+
 
   async execute(executionId, agentId, userId, input) {
     // Update status to RUNNING
@@ -109,15 +112,15 @@ class AgentExecutor {
 
       const duration = Date.now() - startTime;
       const tokensUsed = output?.usage?.total_tokens || 0;
-      const model = output?.model || agent.config?.model || 'gpt-4';
-      const cost = analyticsService.calculateCost(tokensUsed, model);
+      const modelName = output?.model || agent.config?.model || 'gpt-4';
+      const cost = analyticsService.calculateCost(tokensUsed, modelName);
 
       // Update execution with result
       await prisma.agentExecution.update({
         where: { id: executionId },
         data: {
           status: 'COMPLETED',
-          output,
+          output: output,
           completedAt: new Date(),
           duration,
         },
@@ -131,10 +134,19 @@ class AgentExecutor {
         userId,
         organizationId: agent.organizationId,
         duration,
-        apiCalls: 1, // One API call to OpenAI
+        apiCalls: 1,
         tokensUsed,
         cost,
         status: 'COMPLETED',
+      });
+
+      logger.info('Agent execution completed successfully', {
+        agentId,
+        executionId,
+        userId,
+        model: modelName,
+        provider: config.LLM_PROVIDER,
+        duration,
       });
 
       return output;
@@ -177,19 +189,41 @@ class AgentExecutor {
         errorType: error.constructor.name || 'Error',
       });
 
+      logger.error('Agent execution failed', {
+        agentId,
+        executionId,
+        userId,
+        provider: config.LLM_PROVIDER,
+        duration: duration || 0,
+        error: error.message,
+        stack: error.stack,
+      });
+
       throw error;
     }
   }
 
   async executeLLMAgent(agent, input) {
-    if (!this.hasOpenAI) {
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
+    if (!this.hasLLM) {
+      throw new Error('LLM provider not initialized. Check server configurations.');
     }
 
-    const config = agent.config || {};
-    const model = config.model || 'gpt-5.1';
-    const temperature = config.temperature ?? 0.7;
-    let systemPrompt = config.systemPrompt || 'You are a helpful AI assistant.';
+    const configData = agent.config || {};
+    const configuredModel = configData.model || 'gpt-4';
+    
+    // Map model based on provider
+    const providerType = (config.LLM_PROVIDER || '').toLowerCase();
+    let model = configuredModel;
+    if (providerType === 'openrouter') {
+      model = MODEL_MAPPING[configuredModel] || (configuredModel.includes('/') ? configuredModel : 'openai/gpt-4o-mini');
+    } else if (providerType === 'gemini') {
+      model = configuredModel === 'gpt-4' || configuredModel === 'gpt-3.5-turbo' ? 'gemini-1.5-flash' : configuredModel;
+    } else if (providerType === 'anthropic') {
+      model = configuredModel === 'gpt-4' || configuredModel === 'gpt-3.5-turbo' ? 'claude-3-5-sonnet-20241022' : configuredModel;
+    }
+
+    const temperature = configData.temperature ?? 0.7;
+    let systemPrompt = configData.systemPrompt || 'You are a helpful AI assistant.';
     
     // Extract user query text for RAG
     let userQuery = '';
@@ -203,11 +237,11 @@ class AgentExecutor {
 
     // RAG: Search vectors if collectionId is configured
     let ragContext = '';
-    if (config.collectionId) {
+    if (configData.collectionId) {
       try {
         // Verify collection exists and belongs to user
         const collection = await prisma.collection.findUnique({
-          where: { id: config.collectionId },
+          where: { id: configData.collectionId },
         });
 
         if (collection && collection.status === 'ACTIVE') {
@@ -216,11 +250,11 @@ class AgentExecutor {
           
           // Search for similar vectors
           const searchResults = await vectorSearchService.search(
-            config.collectionId,
+            configData.collectionId,
             queryVector,
             {
-              limit: config.ragLimit || 5, // Default to top 5 results
-              minScore: config.ragMinScore || 0.5, // Minimum similarity score
+              limit: configData.ragLimit || 5, // Default to top 5 results
+              minScore: configData.ragMinScore || 0.5, // Minimum similarity score
             }
           );
 
@@ -234,8 +268,7 @@ class AgentExecutor {
           }
         }
       } catch (error) {
-        console.warn('RAG search failed, continuing without context:', error.message);
-        // Continue execution without RAG context if search fails
+        logger.warn('RAG search failed, continuing without context', { error: error.message });
       }
     }
 
@@ -245,49 +278,25 @@ class AgentExecutor {
         role: 'system',
         content: systemPrompt + (ragContext ? '\n\n' + ragContext : ''),
       },
+      {
+        role: 'user',
+        content: userQuery,
+      }
     ];
 
-    // Add user input
-    messages.push({
-      role: 'user',
-      content: userQuery,
-    });
-
-    // Call OpenAI API
     try {
-      const response = await fetch(`${this.apiBase}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature,
-        }),
+      const result = await this.provider.executeChat({
+        model,
+        messages,
+        temperature,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error?.message || 
-          `OpenAI API error: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-      
       return {
-        output: data.choices[0]?.message?.content || '',
-        usage: data.usage || {},
-        model: data.model,
-        finishReason: data.choices[0]?.finish_reason,
+        output: result.output,
+        usage: result.usage,
+        model: result.model,
       };
     } catch (error) {
-      if (error.message.includes('OpenAI API')) {
-        throw error;
-      }
       throw new Error(`Failed to execute LLM agent: ${error.message}`);
     }
   }

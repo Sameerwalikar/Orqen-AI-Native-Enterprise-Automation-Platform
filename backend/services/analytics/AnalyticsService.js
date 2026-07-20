@@ -78,7 +78,12 @@ class AnalyticsService {
           userId: organizationId ? null : userId,
           organizationId,
           date: today,
-          ...updateData,
+          apiCalls: metricData.apiCalls || 0,
+          tokensUsed: metricData.tokensUsed || 0,
+          cost: metricData.cost || 0,
+          agentsExecuted: metricData.resourceType === 'agent' ? 1 : 0,
+          workflowsExecuted: metricData.resourceType === 'workflow' ? 1 : 0,
+          pipelinesExecuted: metricData.resourceType === 'pipeline' ? 1 : 0,
         },
       });
     } catch (error) {
@@ -222,14 +227,19 @@ class AnalyticsService {
    * Calculate cost for execution
    */
   calculateCost(tokensUsed, model = 'gpt-4') {
-    // OpenAI pricing (per 1K tokens)
+    // Pricing definitions (per 1K tokens)
     const pricing = {
       'gpt-4': { input: 0.03, output: 0.06 },
       'gpt-4-turbo': { input: 0.01, output: 0.03 },
       'gpt-3.5-turbo': { input: 0.0015, output: 0.002 },
+      'openai/gpt-4o-mini': { input: 0.00015, output: 0.0006 },
+      'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
+      'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
+      'gemini-1.5-flash': { input: 0.000075, output: 0.0003 }
     };
 
-    const modelPricing = pricing[model] || pricing['gpt-4'];
+    const cleanModel = model.toLowerCase();
+    const modelPricing = pricing[cleanModel] || pricing['openai/gpt-4o-mini'];
     // Assume 70% input, 30% output
     const inputTokens = tokensUsed * 0.7;
     const outputTokens = tokensUsed * 0.3;

@@ -27,6 +27,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { agentsAPI, type Agent, type CreateAgentData } from '@/lib/api/agents';
 import { vectorsAPI } from '@/lib/api/vectors';
 import { toast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Agents = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -36,6 +38,18 @@ const Agents = () => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [executeInput, setExecuteInput] = useState('');
   const [executingExecutionId, setExecutingExecutionId] = useState<string | null>(null);
+  const [selectedHistoryExec, setSelectedHistoryExec] = useState<any>(null);
+
+  // Fetch agent executions
+  const { data: executionsData, refetch: refetchExecutions } = useQuery({
+    queryKey: ['agentExecutions', selectedAgent?.id],
+    queryFn: () => agentsAPI.getAgentExecutions(selectedAgent!.id),
+    enabled: !!selectedAgent?.id,
+  });
+
+  const executions = executionsData?.data?.executions || [];
+  const lastExecution = executions[0];
+
   const [createFormData, setCreateFormData] = useState<CreateAgentData>({
     name: '',
     description: '',
@@ -175,6 +189,7 @@ const Agents = () => {
             clearInterval(pollInterval);
             setExecutingExecutionId(null);
             queryClient.invalidateQueries({ queryKey: ['agents'] });
+            refetchExecutions();
             
             if (execution.status === 'COMPLETED') {
               toast({
@@ -412,34 +427,155 @@ const Agents = () => {
 
         {/* Execute Agent Dialog */}
         <Dialog open={isExecuteDialogOpen} onOpenChange={setIsExecuteDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle>Execute Agent</DialogTitle>
+              <DialogTitle>Agent Execution: {selectedAgent?.name}</DialogTitle>
               <DialogDescription>
-                Run {selectedAgent?.name} with custom input
+                Configure, execute, and view history for this agent.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="execute-input">Input (Optional)</Label>
-                <Textarea
-                  id="execute-input"
-                  placeholder="Enter your input or leave empty for default..."
-                  value={executeInput}
-                  onChange={(e) => setExecuteInput(e.target.value)}
-                  rows={4}
-                />
-                <p className="text-xs text-muted-foreground">
-                  For LLM agents, this will be sent as the user message. Leave empty for a default prompt.
-                </p>
-              </div>
-              {executingExecutionId && (
-                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm">Execution in progress...</span>
+
+            <Tabs defaultValue="execute" className="flex-1 flex flex-col overflow-hidden">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="execute">Execute</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="execute" className="flex-1 space-y-4 py-4 overflow-y-auto">
+                <div className="space-y-2">
+                  <Label htmlFor="execute-input">Input (Optional)</Label>
+                  <Textarea
+                    id="execute-input"
+                    placeholder="Enter your input or leave empty for default..."
+                    value={executeInput}
+                    onChange={(e) => setExecuteInput(e.target.value)}
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For LLM agents, this will be sent as the user message. Leave empty for a default prompt.
+                  </p>
                 </div>
-              )}
-            </div>
+                {executingExecutionId && (
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-sm">Execution in progress...</span>
+                  </div>
+                )}
+                
+                {/* Last Execution Output Quick View */}
+                {lastExecution && (
+                  <div className="mt-4 border rounded-lg p-4 bg-card space-y-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      Last Execution Result
+                      <Badge variant={lastExecution.status === 'COMPLETED' ? 'default' : 'destructive'} className="text-[10px] px-1 py-0 h-4">
+                        {lastExecution.status}
+                      </Badge>
+                    </h4>
+                    {lastExecution.status === 'COMPLETED' && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Model: {lastExecution.output?.model || 'gpt-4o-mini'} | Cost: ${lastExecution.output?.usage?.total_tokens ? ((lastExecution.output?.usage?.prompt_tokens || 0) * 0.00015 / 1000 + (lastExecution.output?.usage?.completion_tokens || 0) * 0.0006 / 1000).toFixed(6) : '0.00'} | Duration: {lastExecution.duration}ms</p>
+                        <div className="bg-muted p-3 rounded text-sm font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
+                          {lastExecution.output?.output || JSON.stringify(lastExecution.output)}
+                        </div>
+                      </div>
+                    )}
+                    {lastExecution.status === 'FAILED' && (
+                      <div className="bg-destructive/10 text-destructive p-3 rounded text-sm font-mono whitespace-pre-wrap">
+                        Error: {lastExecution.error}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="history" className="flex-1 flex flex-col overflow-hidden py-4">
+                {selectedHistoryExec ? (
+                  <div className="space-y-4 overflow-y-auto pr-2">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedHistoryExec(null)} className="mb-2">
+                      &larr; Back to History
+                    </Button>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-mono text-muted-foreground">ID: {selectedHistoryExec.id}</span>
+                        <Badge variant={selectedHistoryExec.status === 'COMPLETED' ? 'default' : selectedHistoryExec.status === 'FAILED' ? 'destructive' : 'outline'}>
+                          {selectedHistoryExec.status}
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs border rounded p-2 bg-muted/50">
+                        <div><strong>Timestamp:</strong> {new Date(selectedHistoryExec.startedAt).toLocaleString()}</div>
+                        <div><strong>Duration:</strong> {selectedHistoryExec.duration ? `${selectedHistoryExec.duration}ms` : 'N/A'}</div>
+                        <div><strong>Model:</strong> {selectedHistoryExec.output?.model || selectedAgent?.config?.model || 'gpt-4'}</div>
+                        <div><strong>Tokens:</strong> {selectedHistoryExec.output?.usage?.total_tokens || 0} ({selectedHistoryExec.output?.usage?.prompt_tokens || 0} prompt / {selectedHistoryExec.output?.usage?.completion_tokens || 0} completion)</div>
+                        <div className="col-span-2">
+                          <strong>Estimated Cost:</strong> ${selectedHistoryExec.output?.usage?.total_tokens ? ((selectedHistoryExec.output?.usage?.prompt_tokens || 0) * 0.00015 / 1000 + (selectedHistoryExec.output?.usage?.completion_tokens || 0) * 0.0006 / 1000).toFixed(6) : '0.00'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-xs font-semibold">Prompt / Input:</span>
+                        <div className="bg-muted p-2 rounded text-xs font-mono whitespace-pre-wrap max-h-[100px] overflow-y-auto">
+                          {typeof selectedHistoryExec.input === 'string' ? selectedHistoryExec.input : JSON.stringify(selectedHistoryExec.input, null, 2)}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-xs font-semibold">Generated Response:</span>
+                        {selectedHistoryExec.status === 'COMPLETED' ? (
+                          <div className="bg-muted p-3 rounded text-sm whitespace-pre-wrap border max-h-[220px] overflow-y-auto">
+                            {selectedHistoryExec.output?.output || JSON.stringify(selectedHistoryExec.output)}
+                          </div>
+                        ) : selectedHistoryExec.status === 'FAILED' ? (
+                          <div className="bg-destructive/10 text-destructive p-3 rounded text-sm font-mono border border-destructive/20">
+                            {selectedHistoryExec.error || 'Unknown execution error'}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 p-3 text-muted-foreground text-sm">
+                            <Loader2 className="h-4 w-4 animate-spin" /> In progress...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <ScrollArea className="flex-1 border rounded-md p-2">
+                    <div className="space-y-4">
+                      {executions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">No previous executions found.</p>
+                      ) : (
+                        executions.map((exec) => (
+                          <div key={exec.id} className="border rounded-md p-3 space-y-2 hover:bg-accent/50 cursor-pointer text-left" onClick={() => setSelectedHistoryExec(exec)}>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-semibold font-mono text-muted-foreground">{exec.id.substring(0, 8)}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">{new Date(exec.startedAt).toLocaleString()}</span>
+                                <Badge variant={exec.status === 'COMPLETED' ? 'default' : exec.status === 'FAILED' ? 'destructive' : 'outline'}>
+                                  {exec.status}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="text-xs truncate text-muted-foreground">
+                              <strong>Input:</strong> {typeof exec.input === 'string' ? exec.input : JSON.stringify(exec.input)}
+                            </div>
+                            {exec.status === 'COMPLETED' && exec.output?.output && (
+                              <div className="text-xs truncate">
+                                <strong>Output:</strong> {exec.output.output}
+                              </div>
+                            )}
+                            {exec.status === 'FAILED' && exec.error && (
+                              <div className="text-xs truncate text-destructive">
+                                <strong>Error:</strong> {exec.error}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                )}
+              </TabsContent>
+            </Tabs>
+
             <DialogFooter>
               <Button
                 variant="outline"
@@ -447,8 +583,8 @@ const Agents = () => {
                   setIsExecuteDialogOpen(false);
                   setSelectedAgent(null);
                   setExecuteInput('');
+                  setSelectedHistoryExec(null);
                 }}
-                disabled={executeMutation.isPending || executingExecutionId !== null}
               >
                 Cancel
               </Button>
