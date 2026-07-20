@@ -1,5 +1,10 @@
 require('dotenv').config();
 
+// Supabase's shared pooler has a low session cap. Keep this app's Prisma client small.
+if (process.env.DATABASE_URL && !/[?&]connection_limit=/.test(process.env.DATABASE_URL)) {
+  process.env.DATABASE_URL += `${process.env.DATABASE_URL.includes('?') ? '&' : '?'}connection_limit=1&pool_timeout=20`;
+}
+
 const requiredEnvVars = [
   'OPENAI_API_KEY',
   'DATABASE_URL',

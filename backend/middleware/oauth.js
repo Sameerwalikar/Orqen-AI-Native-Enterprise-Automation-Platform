@@ -1,9 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { google } = require('googleapis');
 const { WebClient } = require('@slack/web-api');
 const connectorService = require('../services/connectorService');
 
-const prisma = new PrismaClient();
 
 /**
  * OAuth 2.0 Helper for Google Services

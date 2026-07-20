@@ -1,4 +1,4 @@
-import { Database, FileSpreadsheet, Mail, Calendar, MessageSquare, Cloud } from 'lucide-react';
+import { Database, FileSpreadsheet, Mail, Calendar, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ConnectorLogoProps {
@@ -13,10 +13,10 @@ interface ConnectorLogoProps {
  */
 export const ConnectorLogo = ({ type, className, size = 24 }: ConnectorLogoProps) => {
   const logoConfig: Record<string, { icon: any; bgColor: string; iconColor: string }> = {
-    s3: {
-      icon: Cloud,
-      bgColor: 'bg-orange-100',
-      iconColor: 'text-orange-600',
+    supabase: {
+      icon: Database,
+      bgColor: 'bg-emerald-100',
+      iconColor: 'text-emerald-600',
     },
     google_sheets: {
       icon: FileSpreadsheet,

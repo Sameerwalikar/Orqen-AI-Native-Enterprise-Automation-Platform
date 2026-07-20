@@ -31,6 +31,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { ConnectorLogo } from '@/components/connectors/ConnectorLogo';
+import { DatabaseExplorer } from '@/components/connectors/DatabaseExplorer';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -47,6 +48,7 @@ const Connectors = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<ConnectorType | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [explorerConnector, setExplorerConnector] = useState<Connector | null>(null);
 
   // Check for OAuth callback
   useEffect(() => {
@@ -296,6 +298,7 @@ const Connectors = () => {
                       </span>
                     </div>
                     <div className="flex gap-2 pt-2">
+                      {connector.type === 'supabase' && <Button variant="outline" size="sm" onClick={() => setExplorerConnector(connector)}><Database className="h-4 w-4 mr-1" />Explore</Button>}
                       <Button
                         variant="outline"
                         size="sm"
@@ -320,6 +323,10 @@ const Connectors = () => {
             ))}
           </div>
         )}
+
+        <Dialog open={!!explorerConnector} onOpenChange={(open) => !open && setExplorerConnector(null)}>
+          <DialogContent className="max-w-5xl"><DialogHeader><DialogTitle>Database Explorer</DialogTitle><DialogDescription>{explorerConnector?.name} · preview rows safely with read-only access</DialogDescription></DialogHeader>{explorerConnector && <DatabaseExplorer connectorId={explorerConnector.id} />}</DialogContent>
+        </Dialog>
 
         {/* Create Connector Dialog */}
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -368,62 +375,16 @@ const Connectors = () => {
                     />
                   </div>
 
-                  {selectedType.id === 's3' && (
+                  {selectedType.id === 'supabase' && (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="accessKeyId">Access Key ID *</Label>
-                        <Input
-                          id="accessKeyId"
-                          type="password"
-                          value={formData.accessKeyId || ''}
-                          onChange={(e) =>
-                            setFormData({ ...formData, accessKeyId: e.target.value })
-                          }
-                        />
+                        <Label>Connection mode</Label>
+                        <Select value={formData.mode || 'default'} onValueChange={(mode) => setFormData({ ...formData, mode })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent><SelectItem value="default">Workspace database (default)</SelectItem><SelectItem value="advanced">Another Supabase database</SelectItem></SelectContent>
+                        </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="secretAccessKey">Secret Access Key *</Label>
-                        <Input
-                          id="secretAccessKey"
-                          type="password"
-                          value={formData.secretAccessKey || ''}
-                          onChange={(e) =>
-                            setFormData({ ...formData, secretAccessKey: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="bucket">Bucket Name *</Label>
-                        <Input
-                          id="bucket"
-                          value={formData.bucket || ''}
-                          onChange={(e) =>
-                            setFormData({ ...formData, bucket: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="region">Region</Label>
-                        <Input
-                          id="region"
-                          placeholder="us-east-1"
-                          value={formData.region || 'us-east-1'}
-                          onChange={(e) =>
-                            setFormData({ ...formData, region: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="endpoint">Custom Endpoint (Optional, for MinIO)</Label>
-                        <Input
-                          id="endpoint"
-                          placeholder="http://localhost:9000"
-                          value={formData.endpoint || ''}
-                          onChange={(e) =>
-                            setFormData({ ...formData, endpoint: e.target.value })
-                          }
-                        />
-                      </div>
+                      {(formData.mode || 'default') === 'advanced' && <div className="grid grid-cols-2 gap-3"><Input placeholder="Host" value={formData.host || ''} onChange={(e) => setFormData({ ...formData, host: e.target.value })} /><Input placeholder="Database" value={formData.database || ''} onChange={(e) => setFormData({ ...formData, database: e.target.value })} /><Input placeholder="Username" value={formData.username || ''} onChange={(e) => setFormData({ ...formData, username: e.target.value })} /><Input type="password" placeholder="Password" value={formData.password || ''} onChange={(e) => setFormData({ ...formData, password: e.target.value })} /><Select value={formData.sslMode || 'require'} onValueChange={(sslMode) => setFormData({ ...formData, sslMode })}><SelectTrigger><SelectValue placeholder="SSL mode" /></SelectTrigger><SelectContent><SelectItem value="require">Require SSL</SelectItem><SelectItem value="prefer">Prefer SSL</SelectItem><SelectItem value="disable">Disable SSL</SelectItem></SelectContent></Select><Input type="number" placeholder="Port (5432)" value={formData.port || ''} onChange={(e) => setFormData({ ...formData, port: e.target.value })} /><Input type="number" placeholder="Timeout seconds (10)" value={formData.timeout || ''} onChange={(e) => setFormData({ ...formData, timeout: e.target.value })} /></div>}
                     </>
                   )}
 

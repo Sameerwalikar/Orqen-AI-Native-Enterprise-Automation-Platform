@@ -1,11 +1,10 @@
 const cron = require('node-cron');
 const parser = require('cron-parser');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../../lib/prisma');
 const workflowEngine = require('../workflowEngine');
 const pipelineEngine = require('../pipelineEngine');
 const crypto = require('crypto');
 
-const prisma = new PrismaClient();
 
 class SchedulerService {
   constructor() {

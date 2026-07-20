@@ -78,6 +78,15 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Stop the existing backend process or set PORT to another value.`);
+    process.exitCode = 1;
+    return;
+  }
+  throw error;
+});
+
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`WebSocket server initialized`);

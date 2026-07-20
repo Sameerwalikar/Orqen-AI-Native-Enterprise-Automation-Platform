@@ -1,10 +1,9 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const schedulerService = require('../services/scheduler/SchedulerService');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // List webhooks
 router.get('/', authenticateToken, async (req, res) => {

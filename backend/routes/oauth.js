@@ -1,10 +1,9 @@
 const express = require('express');
 const { googleOAuth, slackOAuth } = require('../middleware/oauth');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const connectorService = require('../services/connectorService');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 /**
  * Google OAuth - Initiate

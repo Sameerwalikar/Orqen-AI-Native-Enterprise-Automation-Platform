@@ -1,8 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const vectorSearchService = require('./vectorSearchService');
 const embeddingService = require('./embeddingService');
 const analyticsService = require('./analytics/AnalyticsService');
-const prisma = new PrismaClient();
 const config = require('../config');
 const { getLLMProvider } = require('./llm');
 const logger = require('../utils/logger');
