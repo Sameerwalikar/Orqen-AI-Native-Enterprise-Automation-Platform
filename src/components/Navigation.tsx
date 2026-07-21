@@ -35,9 +35,9 @@ const Navigation = () => {
           {/* Logo */}
           <a href="/" className="flex items-center space-x-2 group">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary via-primary/90 to-primary/70 rounded-xl shadow-lg shadow-primary/20 transition-all duration-300 group-hover:scale-105 flex-shrink-0"></div>
-              <span className="text-xl font-bold font-serif tracking-tight text-foreground">
-                Orqen-AI
+              <div className="orqen-logo-mark flex-shrink-0"><span /></div>
+              <span className="text-xl font-bold tracking-[-0.06em] text-foreground">
+                orqen
               </span>
             </div>
           </a>
@@ -69,13 +69,13 @@ const Navigation = () => {
               <Button
                 variant="default"
                 size="default"
-                className="group relative overflow-hidden bg-gradient-to-r from-gray-600 via-gray-400 to-gray-300 bg-[length:200%_100%] rounded-lg font-medium text-sm pl-4 pr-3 h-9 shadow-lg shadow-black/10 transition-all duration-500 hover:bg-[length:100%_100%] hover:shadow-xl hover:shadow-black/15 flex items-center gap-2"
+                className="group relative overflow-hidden rounded-full border border-border/70 bg-background/70 font-medium text-sm pl-4 pr-2 h-10 shadow-[0_8px_24px_rgba(31,25,29,.08)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_12px_28px_rgba(255,104,82,.15)] flex items-center gap-2"
               >
-                <span className="text-white">Talk to Founders</span>
+                <span className="text-foreground">Talk to Founders</span>
                 <img
                   src="/sameer.jpeg"
                   alt="Sameer"
-                  className="h-6 w-6 rounded-full border border-white/20 object-cover"
+                  className="h-7 w-7 rounded-full border border-white/60 object-cover transition-transform duration-300 group-hover:scale-110"
                 />
               </Button>
             </a>

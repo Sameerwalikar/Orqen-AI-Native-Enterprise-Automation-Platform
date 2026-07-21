@@ -284,12 +284,27 @@ class WorkflowEngine {
   async executeConditionNode(node, context) {
     const condition = node.data?.condition;
     if (!condition) {
-      throw new Error('Condition not specified');
+      throw new Error('Condition node is missing a condition configuration');
     }
 
-    // Simple condition evaluation (can be enhanced)
+    // Builder stores a readable expression; retain support for structured legacy nodes.
+    if (typeof condition === 'string') {
+      const match = condition.trim().match(/^(?:input\.|variables\.)?([\w.]+)\s*(===|==|!==|!=|>=|<=|>|<)\s*['"]?([^'"]+)['"]?$/);
+      if (!match) throw new Error('Condition node has an invalid expression. Use input.priority === \'high\'.');
+      const [, path, symbol, expected] = match;
+      const actual = path.split('.').reduce((value, key) => value?.[key], context.input) ?? context.variables[path];
+      const operator = ({ '===': 'equals', '==': 'equals', '!==': 'notEquals', '!=': 'notEquals', '>': 'greaterThan', '<': 'lessThan', '>=': 'greaterThanOrEqual', '<=': 'lessThanOrEqual' })[symbol];
+      return this.evaluateCondition(actual, operator, expected, condition);
+    }
+
     const { variable, operator, value } = condition;
-    const variableValue = context.variables[variable];
+    if (!variable) throw new Error('Condition node is missing a left operand configuration.');
+    if (!operator) throw new Error('Condition node is missing an operator configuration.');
+    const variableValue = variable.split('.').reduce((current, key) => current?.[key], context.variables);
+    return this.evaluateCondition(variableValue, operator, value, condition);
+  }
+
+  evaluateCondition(variableValue, operator, value, condition) {
 
     let result = false;
 
@@ -306,18 +321,21 @@ class WorkflowEngine {
       case 'lessThan':
         result = variableValue < value;
         break;
+      case 'greaterThanOrEqual': result = variableValue >= value; break;
+      case 'lessThanOrEqual': result = variableValue <= value; break;
       case 'contains':
         result = String(variableValue).includes(String(value));
         break;
       default:
-        throw new Error(`Unknown operator: ${operator}`);
+        throw new Error(`Condition node has an unsupported operator: ${operator}`);
     }
 
-    return { condition: result, value: variableValue };
+    return { condition: result, value: variableValue, expression: condition };
   }
 
   async executeDelayNode(node, context) {
-    const delayMs = node.data?.delayMs || 1000;
+    const delayMs = node.data?.delayMs ?? node.data?.delay;
+    if (!Number.isFinite(delayMs) || delayMs < 0) throw new Error('Delay node is missing a valid duration in milliseconds.');
     await new Promise((resolve) => setTimeout(resolve, delayMs));
     return { delayed: delayMs };
   }
