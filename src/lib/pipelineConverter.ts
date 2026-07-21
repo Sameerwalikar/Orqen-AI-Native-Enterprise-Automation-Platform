@@ -105,6 +105,9 @@ export function validatePipeline(nodes: Node[]): {
     if (node.type === 'connector' && !node.data.connector) {
       errors.push(`Connector step "${node.data.label}" must have a connector type selected`);
     }
+    if (node.type === 'connector' && node.data.config && typeof node.data.config !== 'object') errors.push(`Connector step "${node.data.label}" has invalid JSON configuration`);
+    if (node.type === 'filter' && (!node.data.filter || !node.data.filter.field || !node.data.filter.operator)) errors.push(`Filter step "${node.data.label}" must define a field and operator`);
+    if (node.type === 'transform' && (!node.data.transform || Object.keys(node.data.transform).length === 0)) errors.push(`Transform step "${node.data.label}" must define a mapping`);
   });
 
   // Validate agent steps have agentId

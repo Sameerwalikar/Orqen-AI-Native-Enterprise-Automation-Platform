@@ -26,6 +26,7 @@ export const StepEditor = () => {
   const setSelectedNode = usePipelineBuilderStore((state) => state.setSelectedNode);
 
   const [stepData, setStepData] = useState<any>({});
+  const [configText, setConfigText] = useState('{}');
 
   // Fetch agents for agent step
   const { data: agentsData } = useQuery({
@@ -57,6 +58,7 @@ export const StepEditor = () => {
   useEffect(() => {
     if (selectedNode) {
       setStepData(selectedNode.data || {});
+      setConfigText(JSON.stringify(selectedNode.data?.config || {}, null, 2));
     }
   }, [selectedNode]);
 
@@ -158,13 +160,14 @@ export const StepEditor = () => {
               <Textarea
                 id="config"
                 placeholder='{"key": "value"}'
-                value={JSON.stringify(stepData.config || {}, null, 2)}
+                value={configText}
                 onChange={(e) => {
+                  setConfigText(e.target.value);
                   try {
                     const parsed = JSON.parse(e.target.value);
                     handleUpdate('config', parsed);
                   } catch (err) {
-                    // Don't update if invalid JSON while typing
+                    // Keep draft text editable; save validation handles invalid JSON.
                   }
                 }}
                 rows={4}

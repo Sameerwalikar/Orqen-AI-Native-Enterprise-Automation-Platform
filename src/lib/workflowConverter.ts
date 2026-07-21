@@ -109,6 +109,8 @@ export function validateWorkflow(nodes: Node[], edges: Edge[]): {
     if (node.type === 'condition' && !node.data.condition) {
       errors.push(`Condition node "${node.data.label}" must have a condition defined`);
     }
+    if (node.type === 'delay' && (!Number.isFinite(Number(node.data.delay ?? node.data.delayMs)) || Number(node.data.delay ?? node.data.delayMs) < 0)) errors.push(`Delay node "${node.data.label}" must have a valid duration`);
+    if (node.type === 'transform' && (!node.data.transform || Object.keys(node.data.transform).length === 0)) errors.push(`Transform node "${node.data.label}" must have a mapping`);
   });
 
   return {

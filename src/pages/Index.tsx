@@ -1,14 +1,13 @@
 import Navigation from "@/components/Navigation";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
-import DashboardPreview from "@/components/DashboardPreview";
+import LandingExperience from "@/components/LandingExperience";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-grid-pattern" style={{ zoom: 0.9 }}>
+    <div className="min-h-screen bg-grid-pattern">
       <Navigation />
-      <Hero />
-      <DashboardPreview />
+      <LandingExperience />
       <Footer />
     </div>
   );
