@@ -63,7 +63,7 @@ const DashboardHeader = ({ isSidebarExpanded, onToggleSidebar }: DashboardHeader
           </div>
           <div className="flex flex-col leading-tight">
             <span className="text-sm sm:text-base font-semibold tracking-tight">
-              MultiOps
+              Orqen-AI
             </span>
             <span className="text-[11px] text-muted-foreground">
               Premium
