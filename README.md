@@ -34,7 +34,7 @@ Instead of stitching together separate tools for AI agents, vector search, autom
                    Organizations  ◄── secures everything
 ```
 
-If you've used tools like Zapier, LangChain, or n8n and wished they shared one data model, one auth system, and one observability layer — that's the gap MultiOps fills.
+If you've used tools like Zapier, LangChain, or n8n and wished they shared one data model, one auth system, and one observability layer — that's the gap Orqen-AI fills.
 
 ---
 
@@ -99,7 +99,7 @@ Every feature below is connected to every other feature — see the [Integration
 
 ### Integration Map
 
-Every resource in MultiOps is connected. Agents feed workflows and pipelines, vectors give agents memory via RAG, schedules and webhooks trigger automation, and analytics + organizations wrap the whole platform in observability and access control.
+Every resource in Orqen-AI is connected. Agents feed workflows and pipelines, vectors give agents memory via RAG, schedules and webhooks trigger automation, and analytics + organizations wrap the whole platform in observability and access control.
 
 | | Agents | Vectors | Workflows | Pipelines | Connectors | Schedules | Webhooks |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -150,8 +150,8 @@ Every resource in MultiOps is connected. Agents feed workflows and pipelines, ve
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-org>/multiops.git
-cd multiops
+git clone https://github.com/<your-org>/Orqen-AI.git
+cd Orqen-AI
 
 # Install dependencies
 npm install
@@ -233,7 +233,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for coding standards, commit convention
 
 ## ⭐ Support the Project
 
-If MultiOps is useful to you, consider giving it a star — it genuinely helps the project gain visibility and lets us know we're building something people want.
+If Orqen-AI is useful to you, consider giving it a star — it genuinely helps the project gain visibility and lets us know we're building something people want.
 
 ---
 

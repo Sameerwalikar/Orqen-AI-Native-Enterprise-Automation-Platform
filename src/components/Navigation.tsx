@@ -9,11 +9,9 @@ const Navigation = () => {
   const { isScrolled } = useScroll(50);
 
   const navItems = [
-    { label: "Blogs", href: "#blogs" },
-    { label: "Case Studies", href: "#case-studies" },
-    { label: "Careers", href: "#careers" },
-    { label: "Team", href: "#team" },
-    { label: "Pricing", href: "#pricing" },
+    { label: "Workflow", href: "#workflow" },
+    { label: "Platform", href: "#platform" },
+    { label: "Teams", href: "#teams" },
   ];
 
   return (
@@ -21,88 +19,77 @@ const Navigation = () => {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out",
         isScrolled
-          ? "bg-background/70 dark:bg-background/80 backdrop-blur-xl backdrop-saturate-150 border-b border-border/40 shadow-lg shadow-black/[0.03] dark:shadow-black/20"
-          : "bg-transparent backdrop-blur-0 border-b border-transparent"
+          ? "bg-[#faf9f8]/88 backdrop-blur-xl border-b border-[rgba(27,23,27,.08)]"
+          : "bg-transparent border-b border-transparent",
       )}
     >
-      <div className="container mx-auto px-6 lg:px-12">
+      <div className="mx-auto max-w-[1240px] px-6 lg:px-[7vw]">
         <div
           className={cn(
             "flex items-center justify-between transition-all duration-500",
-            isScrolled ? "h-16" : "h-20"
+            isScrolled ? "h-16" : "h-20",
           )}
         >
-          {/* Logo */}
-          <a href="/" className="flex items-center space-x-2 group">
-            <div className="flex items-center space-x-2">
-              <div className="orqen-logo-mark flex-shrink-0"><span /></div>
-              <span className="text-xl font-bold tracking-[-0.06em] text-foreground">
-                orqen
-              </span>
+          <a href="/" className="group flex items-center space-x-2">
+            <div className="orqen-logo-mark flex-shrink-0">
+              <span />
             </div>
+            <span className="text-xl font-bold tracking-[-0.06em] text-[#191719]">orqen</span>
           </a>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden items-center space-x-8 md:flex">
             {navItems.map((item) => (
               <a
                 key={item.label}
                 href={item.href}
-                className={cn(
-                  "text-sm font-medium transition-colors duration-200",
-                  "text-foreground hover:text-primary",
-                  "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-primary after:transition-all after:duration-300 hover:after:w-full"
-                )}
+                className="text-sm font-medium text-[#403c40] transition-colors duration-200 hover:text-[#191719]"
               >
                 {item.label}
               </a>
             ))}
           </div>
 
-          {/* CTA Button with Image */}
-          <div className="hidden md:flex items-center">
+          <div className="hidden items-center md:flex">
             <a
               href="https://www.linkedin.com/in/sameer-walikar/"
               target="_blank"
-
+              rel="noreferrer"
             >
               <Button
                 variant="default"
                 size="default"
-                className="group relative overflow-hidden rounded-full border border-border/70 bg-background/70 font-medium text-sm pl-4 pr-2 h-10 shadow-[0_8px_24px_rgba(31,25,29,.08)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_12px_28px_rgba(255,104,82,.15)] flex items-center gap-2"
+                className="group flex h-10 items-center gap-2 rounded-full border border-[rgba(27,23,27,.12)] bg-white/80 pl-4 pr-2 text-sm font-medium text-[#2b282b] shadow-[0_8px_24px_rgba(31,25,29,.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(27,23,27,.18)] hover:bg-white"
               >
-                <span className="text-foreground">Talk to Founders</span>
+                <span>Talk to Founders</span>
                 <img
                   src="/sameer.jpeg"
                   alt="Sameer"
-                  className="h-7 w-7 rounded-full border border-white/60 object-cover transition-transform duration-300 group-hover:scale-110"
+                  className="h-7 w-7 rounded-full border border-white/80 object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               </Button>
             </a>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
             className={cn(
-              "md:hidden p-2 rounded-lg transition-colors duration-200",
-              isScrolled ? "hover:bg-secondary/50" : "hover:bg-background/50"
+              "rounded-lg p-2 transition-colors duration-200 md:hidden",
+              isScrolled ? "hover:bg-black/[0.04]" : "hover:bg-white/50",
             )}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle menu"
           >
-            <Menu className="w-6 h-6 text-foreground" />
+            <Menu className="h-6 w-6 text-[#191719]" />
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 animate-fade-in border-t border-border/20">
+          <div className="animate-fade-in border-t border-[rgba(27,23,27,.08)] py-4 md:hidden">
             <div className="flex flex-col space-y-3">
               {navItems.map((item) => (
                 <a
                   key={item.label}
                   href={item.href}
-                  className="px-4 py-2 text-foreground hover:text-primary hover:bg-secondary/50 rounded-lg transition-colors text-sm font-medium"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-[#403c40] transition-colors hover:bg-black/[0.03] hover:text-[#191719]"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}
@@ -110,19 +97,16 @@ const Navigation = () => {
               ))}
               <div className="px-4 pt-2">
                 <a
-                  href="https://cal.com/natty-boy-xmgs67/secret"
+                  href="https://www.linkedin.com/in/sameer-walikar/"
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noreferrer"
                   className="block"
                 >
-                  <Button
-                    variant="default"
-                    className="group relative overflow-hidden bg-gradient-to-r from-gray-600 via-gray-400 to-gray-300 bg-[length:200%_100%] w-full rounded-lg font-medium text-sm h-9 flex items-center justify-center gap-2 pl-4 pr-3 shadow-lg shadow-black/10 transition-all duration-500 hover:bg-[length:100%_100%] hover:shadow-xl hover:shadow-black/15"
-                  >
-                    <span className="text-white">Talk to Founders</span>
+                  <Button className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#1c1a1d] text-sm font-medium text-white hover:bg-[#2a272b]">
+                    Talk to Founders
                     <img
-                      src="/nara.jpg"
-                      alt="Nara"
+                      src="/sameer.jpeg"
+                      alt="Sameer"
                       className="h-6 w-6 rounded-full border border-white/20 object-cover"
                     />
                   </Button>
